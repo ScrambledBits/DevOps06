@@ -1,0 +1,11 @@
+docs/
+TODO.md
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+*.key
+ansible/inventory.ini
+.DS_Store
