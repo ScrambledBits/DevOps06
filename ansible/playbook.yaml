@@ -1,6 +1,30 @@
-# Playbook
-- name: Configurar frontend # Esto es un play
+---
+# Un playbook es una lista de plays. Cada play elige un grupo de hosts del
+# inventario y le aplica roles o tareas. Los plays corren en el orden en que
+# aparecen aquí.
+#
+# Uso, desde esta carpeta (ansible/):
+#   ansible-playbook playbook.yaml
+#   ansible-playbook playbook.yaml --limit backend   # solo un grupo
+#   ansible-playbook playbook.yaml --tags ntp        # solo las tareas con esa etiqueta
+
+- name: Configuración base de todos los servidores
   hosts: all
+  # become: true ejecuta las tareas con sudo. Instalar paquetes o escribir en /etc lo requiere.
   become: true
   roles:
     - common
+
+# El backend va antes que los frontends: así, cuando Caddy empiece a reenviar
+# /api/ hacia Flask, la API ya está escuchando.
+- name: API Flask en el backend
+  hosts: backend
+  become: true
+  roles:
+    - backend
+
+- name: Caddy y página de prueba en los frontends
+  hosts: frontend
+  become: true
+  roles:
+    - frontend

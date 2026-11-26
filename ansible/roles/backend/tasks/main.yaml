@@ -1,0 +1,98 @@
+---
+# Rol backend: instala una API Flask mínima que escucha en el puerto 5000 y
+# comprueba en cada petición que puede hablar con MySQL en RDS.
+#
+# Variables que llegan del inventario que genera Terraform:
+#   db_host, db_name, db_secret_name, aws_region
+
+- name: Instalar Flask, PyMySQL y Gunicorn desde los paquetes de Ubuntu
+  # Ubuntu 24.04 bloquea "pip install" fuera de un entorno virtual (PEP 668).
+  # Con los paquetes de apt no hace falta pip, y se actualizan junto con el sistema.
+  ansible.builtin.apt:
+    name:
+      - python3-flask
+      - python3-pymysql
+      # PyMySQL la usa para el método de autenticación caching_sha2_password de MySQL 8.
+      - python3-cryptography
+      - gunicorn
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Crear la carpeta de la aplicación
+  ansible.builtin.file:
+    path: "{{ backend_app_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copiar el código de la API
+  # copy sube el archivo tal cual desde files/. A diferencia de template, no
+  # procesa variables de Jinja.
+  ansible.builtin.copy:
+    src: app.py
+    dest: "{{ backend_app_dir }}/app.py"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reiniciar la API
+
+- name: Escribir las credenciales de la base de datos
+  ansible.builtin.template:
+    src: devops06-api.env.j2
+    dest: /etc/devops06-api.env
+    owner: root
+    group: root
+    # Solo root puede leerlo. systemd lo lee como root y le pasa las variables al proceso.
+    mode: "0600"
+  vars:
+    # Los lookups siempre corren en tu máquina (el nodo de control), nunca en el
+    # servidor. Este usa tus credenciales locales de AWS para leer el secreto que
+    # creó Terraform en secrets.tf. El secreto es texto JSON y from_json lo
+    # convierte en un diccionario con las claves user y password.
+    db_creds: "{{ lookup('amazon.aws.secretsmanager_secret', db_secret_name, region=aws_region) | from_json }}"
+  # Oculta el resultado de la tarea, incluso con -v o --diff, para que la
+  # contraseña no aparezca en la terminal.
+  no_log: true
+  notify: Reiniciar la API
+
+- name: Instalar el servicio de systemd
+  ansible.builtin.template:
+    src: devops06-api.service.j2
+    dest: /etc/systemd/system/devops06-api.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reiniciar la API
+
+- name: Asegurar que la API esté activa y arranque con el sistema
+  ansible.builtin.systemd_service:
+    name: devops06-api
+    state: started
+    enabled: true
+    # Hace que systemd vuelva a leer los archivos .service antes de arrancar.
+    # Sin esto, la primera vez no encontraría el servicio que se acaba de copiar.
+    daemon_reload: true
+
+- name: Aplicar ahora los handlers pendientes
+  # Por defecto los handlers corren al final del play. Aquí se fuerzan antes
+  # para que la comprobación de abajo pruebe la versión nueva de la API.
+  ansible.builtin.meta: flush_handlers
+
+- name: Comprobar que la API responde y llega a la base de datos
+  # uri hace la petición desde el propio backend, igual que un curl local.
+  # Si la API devuelve 503 (no llega a MySQL), la tarea falla.
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ backend_port }}/"
+    return_content: true
+  register: backend_api
+  # Gunicorn tarda un par de segundos en levantar. Reintenta 5 veces, con
+  # 3 segundos entre intentos, antes de dar la tarea por fallida.
+  retries: 5
+  delay: 3
+  until: backend_api.status == 200
+
+- name: Mostrar la respuesta de la API
+  ansible.builtin.debug:
+    var: backend_api.json

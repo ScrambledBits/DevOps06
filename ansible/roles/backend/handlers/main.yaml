@@ -1,0 +1,8 @@
+---
+# Tres tareas notifican este handler (código, credenciales y servicio). Aunque
+# cambien las tres, el reinicio ocurre una sola vez.
+- name: Reiniciar la API
+  ansible.builtin.systemd_service:
+    name: devops06-api
+    state: restarted
+    daemon_reload: true

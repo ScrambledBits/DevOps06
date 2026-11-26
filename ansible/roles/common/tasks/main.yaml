@@ -1,22 +1,49 @@
 ---
-# file: roles/common/tasks/main.yml
-- name: be sure ntp is installed
-  package:
-    name: ntp
+# Rol común: corre en todos los servidores (play "all" del playbook) y deja la
+# hora sincronizada con chrony. Un reloj desfasado rompe más cosas de las que
+# parece: certificados TLS, firmas de las llamadas a AWS y el orden de los logs.
+#
+# Antes este rol usaba el paquete "ntp" y el servicio "ntpd". En Ubuntu 24.04
+# "ntp" es solo un paquete de transición hacia NTPsec, con otro servicio y otra
+# ruta de configuración, así que el rol fallaba. chrony es el reemplazo habitual.
+
+- name: Esperar a que cloud-init termine el primer arranque
+  # En una instancia nueva, cloud-init puede seguir instalando paquetes
+  # (en los frontends instala Caddy). Si Ansible usa apt al mismo tiempo, choca
+  # con el bloqueo de apt. Este comando se queda esperando hasta que cloud-init termine.
+  ansible.builtin.command: cloud-init status --wait
+  # register guarda el resultado en una variable. ansible-lint pide que las
+  # variables de un rol empiecen con su nombre (common_) para no chocar con otros roles.
+  register: common_cloud_init
+  # Solo consulta el estado, nunca cambia nada: así la tarea sale "ok" y no "changed".
+  changed_when: false
+  # 0 = terminó bien, 2 = terminó con advertencias recuperables. Solo 1 es un error real.
+  failed_when: common_cloud_init.rc not in [0, 2]
+
+- name: Instalar chrony
+  ansible.builtin.apt:
+    name: chrony
     state: present
+    # Equivale a "apt update", pero solo si la caché tiene más de una hora.
+    update_cache: true
+    cache_valid_time: 3600
   tags: ntp
 
-- name: be sure ntp is configured
-  template:
-    src: ntp.conf.j2
-    dest: /etc/ntp.conf
-  notify:
-    - restart ntpd
+- name: Configurar chrony
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  # notify no reinicia en este momento: anota el handler para que corra al final
+  # del play, y solo si esta tarea cambió el archivo.
+  notify: Reiniciar chrony
   tags: ntp
 
-- name: be sure ntpd is running and enabled
-  ansible.builtin.service:
-    name: ntpd
+- name: Asegurar que chrony esté activo y arranque con el sistema
+  ansible.builtin.systemd_service:
+    name: chrony
     state: started
     enabled: true
   tags: ntp

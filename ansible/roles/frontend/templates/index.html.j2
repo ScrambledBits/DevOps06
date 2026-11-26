@@ -1,0 +1,52 @@
+{#
+  Los comentarios entre llaves y numeral son de Jinja: se quedan en tu máquina
+  y no llegan al HTML final.
+
+  Esta página mezcla dos tipos de variables:
+  - Variables mágicas: Ansible las crea solo a partir del inventario y la
+    ejecución. Aquí se usan inventory_hostname, group_names, groups y hostvars.
+  - Facts: datos que Ansible recoge del servidor al inicio de cada play
+    (gather_facts). Se leen desde el diccionario ansible_facts.
+#}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ inventory_hostname }} | DevOps06</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #ccc; }
+    .actual { font-weight: bold; }
+  </style>
+</head>
+<body>
+  {# Fact: el hostname que reporta el propio sistema, del tipo ip-10-0-1-23. #}
+  <h1>Respondió {{ ansible_facts['hostname'] }}</h1>
+  <p>Recarga la página: el ALB reparte las peticiones y puede contestar otro frontend.</p>
+
+  <table>
+    {# Variable mágica: el nombre del host tal como aparece en el inventario. #}
+    <tr><th>Nombre en el inventario</th><td>{{ inventory_hostname }}</td></tr>
+    <tr><th>Hostname del sistema</th><td>{{ ansible_facts['hostname'] }}</td></tr>
+    <tr><th>IP privada</th><td>{{ ansible_facts['default_ipv4']['address'] }}</td></tr>
+    {# Variable del inventario: la IP a la que Ansible se conecta por SSH. #}
+    <tr><th>IP pública</th><td>{{ ansible_host }}</td></tr>
+    {# Variable mágica: la lista de grupos a los que pertenece este host. #}
+    <tr><th>Grupos</th><td>{{ group_names | join(', ') }}</td></tr>
+    <tr><th>Sistema</th><td>{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}</td></tr>
+  </table>
+
+  {# Variable mágica: groups tiene todos los grupos del inventario con sus hosts. #}
+  <h2>Frontends en el inventario ({{ groups['frontend'] | length }})</h2>
+  <ul>
+  {% for host in groups['frontend'] %}
+    {# hostvars[host] permite leer las variables de otro host, no solo las del actual. #}
+    <li{% if host == inventory_hostname %} class="actual"{% endif %}>{{ host }}: {{ hostvars[host]['ansible_host'] }}</li>
+  {% endfor %}
+  </ul>
+
+  <p><a href="/api/">Probar el backend y la base de datos</a></p>
+</body>
+</html>

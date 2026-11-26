@@ -10,3 +10,4 @@ crash.log
 ansible/inventory.ini
 .DS_Store
 .claude/
+__pycache__/

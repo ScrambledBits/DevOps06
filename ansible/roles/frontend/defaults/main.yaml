@@ -1,0 +1,6 @@
+---
+# Valores por defecto del rol. Son la prioridad más baja de Ansible: cualquier
+# variable con el mismo nombre en el inventario o en group_vars los reemplaza.
+
+# Carpeta desde donde Caddy sirve la página.
+frontend_web_root: /var/www/devops06

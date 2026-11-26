@@ -1,0 +1,8 @@
+---
+# Variables para todos los hosts. Ansible carga group_vars/<grupo>.yaml para
+# cada host que pertenezca a ese grupo, y "all" incluye a todos.
+
+# Puerto de la API Flask. Lo usan dos roles: backend (donde escucha) y frontend
+# (a donde Caddy reenvía /api/). Tiene que coincidir con la regla del security
+# group del backend en terraform/security.tf.
+backend_port: 5000

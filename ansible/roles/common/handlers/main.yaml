@@ -1,6 +1,8 @@
 ---
-# file: roles/common/handlers/main.yml
-- name: restart ntpd
-  ansible.builtin.service:
-    name: ntpd
+# Un handler es una tarea que solo corre cuando otra la notifica con "notify".
+# Si el template de chrony no cambió, este reinicio no ocurre. Y si varias
+# tareas lo notifican en el mismo play, corre una sola vez al final.
+- name: Reiniciar chrony
+  ansible.builtin.systemd_service:
+    name: chrony
     state: restarted

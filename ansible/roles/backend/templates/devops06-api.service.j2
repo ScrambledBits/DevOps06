@@ -1,0 +1,25 @@
+# Archivo administrado por Ansible (rol backend). Los cambios manuales se
+# pierden en el próximo despliegue.
+
+[Unit]
+Description=API Flask de DevOps06
+# Espera a que la red esté lista: la API necesita llegar a RDS desde el arranque.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# systemd crea un usuario temporal sin privilegios solo para este servicio.
+# La API no corre como root y no hace falta crear un usuario a mano.
+DynamicUser=yes
+# systemd lee este archivo como root y pasa sus variables al proceso.
+EnvironmentFile=/etc/devops06-api.env
+# Gunicorn es el servidor para producción. El servidor que trae Flask es solo
+# para desarrollo y el propio Flask lo advierte al arrancar.
+# 0.0.0.0 escucha en todas las interfaces: los frontends llegan por la IP privada.
+ExecStart=/usr/bin/gunicorn --bind 0.0.0.0:{{ backend_port }} --workers 2 --chdir {{ backend_app_dir }} app:app
+# Si el proceso muere por un error, systemd lo vuelve a levantar.
+Restart=on-failure
+
+[Install]
+# Arranca con el sistema, en el modo normal multiusuario.
+WantedBy=multi-user.target

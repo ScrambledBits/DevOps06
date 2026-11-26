@@ -1,0 +1,27 @@
+# Archivo administrado por Ansible (rol common). Los cambios manuales se pierden
+# en el próximo despliegue.
+
+# Amazon Time Sync Service: AWS expone un servidor de hora en la IP link-local
+# 169.254.169.123 de cada instancia EC2. No sale a internet, así que funciona
+# igual en las subnets privadas.
+# prefer: se elige por encima de las demás fuentes.
+# minpoll/maxpoll 4: consulta cada 2^4 = 16 segundos.
+server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4
+
+# Respaldo: el pool público de México que usaba la versión con ntpd.
+# iburst manda varias consultas seguidas al arrancar para sincronizar más rápido.
+pool mx.pool.ntp.org iburst
+
+# Guarda cuánto se adelanta o se atrasa el reloj, para corregirlo mejor tras un reinicio.
+driftfile /var/lib/chrony/chrony.drift
+
+# Si el reloj está desfasado más de 1 segundo, lo corrige de golpe durante las
+# primeras 3 actualizaciones. Después solo lo ajusta poco a poco.
+makestep 1 3
+
+# Copia la hora del sistema al reloj de hardware cada cierto tiempo.
+rtcsync
+
+keyfile /etc/chrony/chrony.keys
+logdir /var/log/chrony
+leapsectz right/UTC

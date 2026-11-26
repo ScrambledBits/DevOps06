@@ -1,0 +1,7 @@
+---
+- name: Recargar Caddy
+  # reload aplica el Caddyfile nuevo sin cortar las conexiones abiertas.
+  # restart también funcionaría, pero deja al servidor sin responder un instante.
+  ansible.builtin.systemd_service:
+    name: caddy
+    state: reloaded

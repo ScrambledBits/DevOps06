@@ -1,0 +1,5 @@
+---
+# Valores por defecto del rol backend.
+
+# Carpeta donde vive el código de la API.
+backend_app_dir: /opt/devops06-api

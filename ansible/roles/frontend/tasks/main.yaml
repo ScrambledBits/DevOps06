@@ -1,0 +1,51 @@
+---
+# Rol frontend: Caddy sirve una página que muestra qué servidor respondió y
+# reenvía /api/ al backend Flask. Detrás del ALB, cada recarga del navegador
+# puede caer en un frontend distinto, y la página lo deja ver.
+
+- name: Instalar Caddy
+  # cloud-init ya lo instala (terraform/templates/frontend-cloud-init.yml), pero
+  # el rol no debería depender de eso. Si ya está instalado, apt no hace nada y
+  # la tarea sale "ok".
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Crear la carpeta del sitio
+  ansible.builtin.file:
+    path: "{{ frontend_web_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Publicar la página con los datos del servidor
+  # template procesa el archivo .j2 con Jinja en tu máquina y sube el resultado.
+  # Cada frontend recibe una página distinta porque las variables cambian por host.
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ frontend_web_root }}/index.html"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configurar Caddy
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: "0644"
+    # Antes de reemplazar el archivo, Ansible escribe la versión nueva en un
+    # temporal y corre este comando sobre él (%s es la ruta del temporal). Si
+    # Caddy la rechaza, la tarea falla y el Caddyfile anterior queda intacto.
+    validate: caddy validate --adapter caddyfile --config %s
+  notify: Recargar Caddy
+
+- name: Asegurar que Caddy esté activo y arranque con el sistema
+  ansible.builtin.systemd_service:
+    name: caddy
+    state: started
+    enabled: true

@@ -1,0 +1,23 @@
+# Archivo administrado por Ansible (rol frontend). Los cambios manuales se
+# pierden en el próximo despliegue.
+
+# ":80" significa "cualquier nombre de host en el puerto 80", que es por donde
+# llega el ALB. Como no hay un dominio, Caddy no intenta pedir certificados HTTPS.
+:80 {
+	# Las rutas que empiezan con /api/ van al backend Flask. handle_path quita
+	# el prefijo antes de reenviar: /api/ llega a Flask como /.
+	#
+	# La IP del backend sale de dos variables mágicas de Ansible:
+	#   groups['backend'][0] es el primer host del grupo backend del inventario.
+	#   hostvars['nombre-del-host'] da acceso a las variables de ese host, como su ansible_host.
+	handle_path /api/* {
+		reverse_proxy {{ hostvars[groups['backend'][0]]['ansible_host'] }}:{{ backend_port }}
+	}
+
+	# Cualquier otra ruta se sirve como archivo estático desde la carpeta del sitio.
+	# Los bloques handle son excluyentes: cada petición entra solo en uno.
+	handle {
+		root * {{ frontend_web_root }}
+		file_server
+	}
+}
