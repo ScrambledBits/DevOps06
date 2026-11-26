@@ -3,7 +3,7 @@
 # reenvía /api/ al backend Flask. Detrás del ALB, cada recarga del navegador
 # puede caer en un frontend distinto, y la página lo deja ver.
 
-- name: Instalar Caddy
+- name: Asegurar que Caddy esté instalado
   # cloud-init ya lo instala (terraform/templates/frontend-cloud-init.yml), pero
   # el rol no debería depender de eso. Si ya está instalado, apt no hace nada y
   # la tarea sale "ok".
