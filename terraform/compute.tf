@@ -58,12 +58,17 @@ resource "aws_instance" "frontend" {
   }
 }
 
-# Un único backend en la subnet privada. Sin IP pública: solo se llega desde la VPC.
+# Dos backends en las subnets privadas. Sin IP pública: solo se llega desde la VPC.
 resource "aws_instance" "backend" {
   ami           = data.aws_ami.operating-system.id
   instance_type = "t3.micro"
 
-  subnet_id = aws_subnet.private.id
+  count = 2
+
+  # Reparte los backends entre las dos subnets privadas, que están en AZ distintas.
+  # element() da la vuelta a la lista: el 0 va a private, el 1 a private-2, el 2
+  # volvería a private. Si se cae una zona de disponibilidad, queda el otro backend.
+  subnet_id = element([aws_subnet.private.id, aws_subnet.private-2.id], count.index)
 
   vpc_security_group_ids = [aws_security_group.all.id, aws_security_group.backend.id]
 
@@ -75,8 +80,17 @@ resource "aws_instance" "backend" {
   }
 
   tags = {
-    Name = "Backend"
+    Name = "Backend ${count.index}"
   }
+}
+
+# Con count, la dirección del recurso pasa de aws_instance.backend a
+# aws_instance.backend[0]. Sin este bloque, Terraform creería que el backend
+# viejo sobra y que backend[0] es nuevo: lo destruiría y crearía otro. moved le
+# dice que es la misma instancia con otro nombre, así que solo se crea backend[1].
+moved {
+  from = aws_instance.backend
+  to   = aws_instance.backend[0]
 }
 
 # Base de datos MySQL administrada por AWS (RDS). AWS se encarga del sistema

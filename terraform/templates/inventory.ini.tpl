@@ -7,12 +7,13 @@
 %{ for i, ip in frontend_ips ~}
 frontend-${i} ansible_host=${ip}
 %{ endfor }
-# El backend solo tiene IP privada: desde tu máquina no se llega directo.
-# El host se llama backend-0 y no "backend" porque un host y un grupo con el
+# Los backends solo tienen IP privada: desde tu máquina no se llega directo.
+# Los hosts se llaman backend-N y no "backend" porque un host y un grupo con el
 # mismo nombre confunden a Ansible (y lo advierte con un warning).
 [backend]
-backend-0 ansible_host=${backend_ip}
-
+%{ for i, ip in backend_ips ~}
+backend-${i} ansible_host=${ip}
+%{ endfor }
 # Variables para todos los hosts.
 [all:vars]
 ansible_user=ubuntu

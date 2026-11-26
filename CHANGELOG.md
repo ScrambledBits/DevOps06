@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (segundo backend)
+
+- Segundo backend en `private-2` (otra AZ) con `count = 2` y un bloque `moved` para no recrear el existente.
+- Caddy reparte `/api/` entre los backends con `round_robin` y reintenta en otro si uno no acepta la conexión.
+- La página del frontend consulta `/api/` cada 5 segundos con JavaScript.
+- Documentado el workaround de macOS para el lookup de Secrets Manager.
+
 ## 2026-11-25 (Ansible)
 
 - Roles `frontend` (Caddy + página con facts y variables mágicas) y `backend` (API Flask con Gunicorn que comprueba MySQL).

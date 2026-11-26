@@ -2,8 +2,8 @@
 
 Ejercicio de clase: infraestructura en AWS con Terraform y configuración con Ansible.
 
-- `terraform/`: VPC con subnets públicas y privadas, 5 frontends detrás de un ALB, un backend privado y MySQL en RDS. Credenciales en Secrets Manager. También genera `ansible/inventory.ini`.
-- `ansible/`: tres roles. `common` sincroniza la hora con chrony en todos los servidores, `backend` instala una API Flask en el puerto 5000 que consulta MySQL, y `frontend` configura Caddy con una página que muestra qué servidor respondió y reenvía `/api/` al backend.
+- `terraform/`: VPC con subnets públicas y privadas, 5 frontends detrás de un ALB, 2 backends privados (uno por AZ) y MySQL en RDS. Credenciales en Secrets Manager. También genera `ansible/inventory.ini`.
+- `ansible/`: tres roles. `common` sincroniza la hora con chrony en todos los servidores, `backend` instala una API Flask en el puerto 5000 que consulta MySQL, y `frontend` configura Caddy con una página que muestra qué servidor respondió y reparte `/api/` entre los backends. La página consulta `/api/` cada 5 segundos.
 
 Todo el código está comentado en español.
 

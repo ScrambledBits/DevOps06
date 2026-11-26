@@ -33,12 +33,16 @@ output "db-user" {
   value       = local.dbcreds["user"]
 }
 
-# El backend no tiene IP pública: se entra saltando por el frontend, que hace de bastión.
+# Los backends no tienen IP pública: se entra saltando por el frontend, que hace de bastión.
 # ProxyCommand abre primero un ssh al frontend y con -W %h:%p reenvía la conexión
 # a la IP privada del backend (%h host, %p puerto). Las dos conexiones usan la misma llave.
 # `ssh -J ubuntu@<frontend>` hace lo mismo con menos texto, con una diferencia:
 # no pasa el -i al salto y depende de que la llave esté en tu agente SSH.
+# Es una lista con un comando por backend: la expresión for recorre cada instancia.
 output "backend-login" {
-  description = "El string para hacer login a la instancia del backend a traves del frontend"
-  value       = "ssh -i ${local.ssh-key} -o ProxyCommand=\"ssh -i ${local.ssh-key} -W %h:%p ubuntu@${local.frontend-ips[0]}\" ubuntu@${aws_instance.backend.private_ip}"
+  description = "Los strings para hacer login a cada backend a traves del frontend"
+  value = [
+    for backend in aws_instance.backend :
+    "ssh -i ${local.ssh-key} -o ProxyCommand=\"ssh -i ${local.ssh-key} -W %h:%p ubuntu@${local.frontend-ips[0]}\" ubuntu@${backend.private_ip}"
+  ]
 }

@@ -14,8 +14,9 @@ resource "local_file" "ansible-inventory" {
     frontend_ips = local.frontend-ips
     # El primer frontend hace de bastión: es el salto para llegar al backend.
     bastion_ip = local.frontend-ips[0]
-    # El backend solo tiene IP privada; Ansible llega a ella a través del bastión.
-    backend_ip = aws_instance.backend.private_ip
+    # Los backends solo tienen IP privada; Ansible llega a ellas a través del bastión.
+    # El splat [*] arma la lista con la IP privada de cada backend.
+    backend_ips = aws_instance.backend[*].private_ip
     # abspath() vuelve absoluta la ruta de la llave, así el inventario funciona
     # sin importar desde qué carpeta ejecutes Ansible.
     ssh_key = abspath(local.ssh-key)

@@ -7,11 +7,19 @@
 	# Las rutas que empiezan con /api/ van al backend Flask. handle_path quita
 	# el prefijo antes de reenviar: /api/ llega a Flask como /.
 	#
-	# La IP del backend sale de dos variables mágicas de Ansible:
-	#   groups['backend'][0] es el primer host del grupo backend del inventario.
+	# Las IPs de los backends salen de dos variables mágicas de Ansible:
+	#   groups['backend'] es la lista de hosts del grupo backend del inventario.
 	#   hostvars['nombre-del-host'] da acceso a las variables de ese host, como su ansible_host.
+	# El bucle de Jinja escribe un upstream por backend, separados por espacios.
 	handle_path /api/* {
-		reverse_proxy {{ hostvars[groups['backend'][0]]['ansible_host'] }}:{{ backend_port }}
+		reverse_proxy {% for host in groups['backend'] %}{{ hostvars[host]['ansible_host'] }}:{{ backend_port }} {% endfor %}{
+			# round_robin turna los backends en orden: la página los va alternando
+			# en cada comprobación. Sin esto, Caddy elige uno al azar.
+			lb_policy round_robin
+			# Si el backend elegido no acepta la conexión (apagado o caído), Caddy
+			# prueba con el siguiente durante hasta 5 segundos antes de devolver 502.
+			lb_try_duration 5s
+		}
 	}
 
 	# Cualquier otra ruta se sirve como archivo estático desde la carpeta del sitio.
