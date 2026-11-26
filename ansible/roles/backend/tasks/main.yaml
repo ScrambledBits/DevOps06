@@ -9,11 +9,12 @@
   # Ubuntu 24.04 bloquea "pip install" fuera de un entorno virtual (PEP 668).
   # Con los paquetes de apt no hace falta pip, y se actualizan junto con el sistema.
   ansible.builtin.apt:
+    # RDS para MySQL 8.0 autentica con mysql_native_password, que PyMySQL maneja
+    # sin dependencias extra. Si algún día pasas a MySQL 8.4 (caching_sha2_password),
+    # agrega python3-cryptography a esta lista.
     name:
       - python3-flask
       - python3-pymysql
-      # PyMySQL la usa para el método de autenticación caching_sha2_password de MySQL 8.
-      - python3-cryptography
       - gunicorn
     state: present
     update_cache: true
