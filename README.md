@@ -28,6 +28,7 @@ Requisitos en tu máquina:
 
 - Credenciales de AWS configuradas (las mismas de Terraform): Ansible lee la contraseña de la base desde Secrets Manager.
 - La colección `amazon.aws` y `boto3`. Vienen incluidas con el paquete completo `ansible` (por ejemplo, el de Homebrew). Con `ansible-core` solo: `ansible-galaxy collection install amazon.aws` y `boto3` en el mismo Python de Ansible.
+- En macOS, antes de correr el playbook: `export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` (o agrégalo a `~/.zshrc`). Sin esto, la tarea que lee el secreto falla con `A worker was found in a dead state`: Ansible crea cada worker con `fork()`, boto3 consulta la configuración de proxy del sistema y macOS mata al proceso hijo que usa esas librerías después de un fork. `export no_proxy='*'` también lo evita, pero ignora cualquier proxy que tengas configurado.
 
 Después, abre en el navegador el DNS del ALB: cada recarga puede mostrar otro frontend. `/api/` muestra el backend y el estado de la conexión con MySQL.
 

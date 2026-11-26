@@ -7,6 +7,10 @@
 #   ansible-playbook playbook.yaml
 #   ansible-playbook playbook.yaml --limit backend   # solo un grupo
 #   ansible-playbook playbook.yaml --tags ntp        # solo las tareas con esa etiqueta
+#
+# En macOS, exporta antes OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES. Si no, el
+# lookup de Secrets Manager del rol backend mata al worker de Ansible
+# ("A worker was found in a dead state"). Detalles en el README.
 
 - name: Configuración base de todos los servidores
   hosts: all
