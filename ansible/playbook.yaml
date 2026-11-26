@@ -1,10 +1,6 @@
 # Playbook
 - name: Configurar frontend # Esto es un play
   hosts: all
-  tasks:
-   - name: Ping my hosts
-     ansible.builtin.ping: # Modulo
-
-   - name: Print message
-     ansible.builtin.debug:
-       msg: Hello world
+  become: true
+  roles:
+    - common
