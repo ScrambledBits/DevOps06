@@ -4,7 +4,7 @@ terraform {
   # Cada provider es un plugin que traduce HCL a llamadas de API.
   # `source` dice de qué registro sale; `version` fija qué versiones se aceptan.
   required_providers {
-    # "~> 6.0" acepta cualquier 6.x (6.1, 6.32...) pero nunca 7.0.
+    # "~> 6.0" acepta cualquier 6.x (6.1, 6.32, etc.) pero nunca 7.0.
     # Las versiones mayores pueden romper recursos, por eso se cierra la puerta ahí.
     aws = {
       source  = "hashicorp/aws"
@@ -31,7 +31,7 @@ terraform {
 
   # El backend decide dónde vive el archivo de estado (.tfstate). Ese archivo es la
   # memoria de Terraform: relaciona cada bloque `resource` con su ID real en AWS.
-  # En S3 lo comparte todo el equipo en vez de quedar perdido en una laptop.
+  # En S3 lo comparte todo el equipo en lugar de quedarse en la computadora de una sola persona.
   backend "s3" {
     bucket = "bootcamperu-tf-state"               # El bucket tiene que existir antes del primer `init`. Se puede crear desde la consola de AWS.
     key    = "estados/terraform-devops06.tfstate" # Ruta del objeto dentro del bucket. Terraform lo crea en el primer `apply` si no existe.
@@ -39,8 +39,8 @@ terraform {
     # Cifra el estado en reposo. Hace falta: ahí terminan contraseñas y llaves privadas en texto plano.
     encrypt = true
     # Bloqueo nativo de S3: durante un plan/apply Terraform deja un archivo .tflock junto al estado.
-    # Si otra persona lanza un apply a la vez, encuentra el candado y Terraform corta con error
-    # en lugar de pisar el estado. Con -lock-timeout=2m esperaría ese tiempo antes de rendirse.
+    # Si otra persona lanza un apply a la vez, encuentra el candado y Terraform se detiene con
+    # un error en lugar de sobrescribir el estado. Con -lock-timeout=2m esperaría ese tiempo antes de fallar.
     # Antes esto requería una tabla de DynamoDB aparte.
     use_lockfile = true
   }

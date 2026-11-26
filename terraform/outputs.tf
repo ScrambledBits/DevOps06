@@ -36,7 +36,7 @@ output "db-user" {
 # El backend no tiene IP pública: se entra saltando por el frontend, que hace de bastión.
 # ProxyCommand abre primero un ssh al frontend y con -W %h:%p reenvía la conexión
 # a la IP privada del backend (%h host, %p puerto). Las dos conexiones usan la misma llave.
-# `ssh -J ubuntu@<frontend>` hace lo mismo con menos texto, pero tiene un detalle:
+# `ssh -J ubuntu@<frontend>` hace lo mismo con menos texto, con una diferencia:
 # no pasa el -i al salto y depende de que la llave esté en tu agente SSH.
 output "backend-login" {
   description = "El string para hacer login a la instancia del backend a traves del frontend"

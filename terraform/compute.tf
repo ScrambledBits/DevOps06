@@ -1,5 +1,5 @@
 # Busca el ID de la imagen (AMI) de Ubuntu más reciente. Los IDs cambian con cada
-# publicación y son distintos en cada región, así que escribirlos a mano envejece mal.
+# publicación y son distintos en cada región, así que un ID escrito a mano queda desactualizado pronto.
 data "aws_ami" "operating-system" {
   # Si varias imágenes coinciden con los filtros, toma la más nueva.
   most_recent = true
@@ -17,7 +17,7 @@ data "aws_ami" "operating-system" {
   }
 
   # Cuenta de AWS de Canonical. Sin este filtro cualquiera podría publicar una
-  # AMI con el mismo nombre y colártela.
+  # AMI con el mismo nombre y terminarías arrancando una imagen ajena.
   owners = ["099720109477"]
 }
 
@@ -45,7 +45,7 @@ resource "aws_instance" "frontend" {
   user_data = templatefile("${path.module}/templates/frontend-cloud-init.yml", {})
 
   # Exige IMDSv2: para leer los metadatos de la instancia (credenciales de IAM incluidas)
-  # primero hay que pedir un token. Corta los ataques SSRF que robaban credenciales con
+  # primero hay que pedir un token. Bloquea los ataques SSRF que robaban credenciales con
   # un simple GET a 169.254.169.254.
   metadata_options {
     http_endpoint = "enabled"
@@ -53,7 +53,7 @@ resource "aws_instance" "frontend" {
   }
 
   tags = {
-    # count.index es el número de cada copia: "Frontend 0", "Frontend 1"...
+    # count.index es el número de cada copia: "Frontend 0", "Frontend 1" y así hasta "Frontend 4".
     Name = "Frontend ${count.index}"
   }
 }
@@ -98,8 +98,8 @@ resource "aws_db_instance" "db-1" {
   password = jsondecode(data.aws_secretsmanager_secret_version.db-credentials.secret_string)["password"]
   # Parámetros de MySQL que trae AWS por defecto.
   parameter_group_name = "default.mysql8.0"
-  # En destroy no guarda un snapshot final. Cómodo en clase; en producción
-  # perderías los datos de un plumazo.
+  # En destroy no guarda un snapshot final. Práctico en clase, pero en producción
+  # perderías todos los datos sin posibilidad de recuperarlos.
   skip_final_snapshot = true
   # Sin esto RDS usa el SG por defecto de la VPC y el backend no llega al puerto 3306.
   vpc_security_group_ids = [aws_security_group.db.id]

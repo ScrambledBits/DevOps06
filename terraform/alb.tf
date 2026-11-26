@@ -45,7 +45,7 @@ resource "aws_lb_target_group" "frontend" {
 
   # Cada pocos segundos el ALB hace GET / a cada instancia. Si no responde 200
   # varias veces seguidas, la marca como unhealthy y la saca del reparto.
-  # Recién creadas aparecen unhealthy hasta que cloud-init termina de instalar Caddy.
+  # Justo después de crearse aparecen como unhealthy, hasta que cloud-init termina de instalar Caddy.
   health_check {
     path    = "/"
     matcher = "200"

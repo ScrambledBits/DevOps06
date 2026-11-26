@@ -105,7 +105,7 @@ resource "aws_internet_gateway" "igw" {
 # Modo "regional" (disponible desde noviembre de 2025): se pide sobre la VPC, sin subnet_id,
 # y AWS lo extiende solo a las AZ donde tengas recursos. El modo zonal clásico obligaba
 # a crear uno por AZ dentro de una subnet pública.
-# Ojo con la factura: un NAT cobra por hora y por GB procesado, aunque esté ocioso.
+# Cuidado con el costo: un NAT cobra por hora y por GB procesado, aunque no tenga tráfico.
 resource "aws_nat_gateway" "nat-gw" {
   vpc_id            = aws_vpc.main.id
   availability_mode = "regional"

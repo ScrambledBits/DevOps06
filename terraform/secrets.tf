@@ -2,16 +2,16 @@
 # en AWS Secrets Manager y la base de datos los vuelve a leer de ahí.
 # Así las credenciales nunca se escriben a mano en el código.
 
-# El "cajón" del secreto, todavía sin contenido. El nombre queda, por ejemplo, "dev/dbcreds".
+# El contenedor del secreto, todavía sin contenido. El nombre queda, por ejemplo, "dev/dbcreds".
 resource "aws_secretsmanager_secret" "dbcreds" {
   name = "${var.environment}/dbcreds"
   # Borra el secreto en el acto al hacer destroy. Sin esto AWS lo retiene 30 días
-  # por si te arrepientes, y en ese tiempo el nombre queda ocupado: el siguiente apply falla.
+  # por si necesitas recuperarlo, y en ese tiempo el nombre queda ocupado: el siguiente apply falla.
   recovery_window_in_days = 0
 }
 
 # El contenido real del secreto. Un secreto puede tener muchas versiones; esta es la actual.
-# jsonencode convierte el mapa de abajo en texto: {"password":"...","user":"..."}
+# jsonencode convierte el mapa de abajo en texto: {"password":"<contraseña>","user":"<usuario>"}
 resource "aws_secretsmanager_secret_version" "creds" {
   secret_id     = aws_secretsmanager_secret.dbcreds.id
   secret_string = jsonencode(local.dbcreds)
@@ -45,7 +45,7 @@ resource "random_password" "db-password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-# Nombre de usuario aleatorio y legible, tipo "walrus" o "falcon".
+# Nombre de usuario aleatorio y legible, como "walrus" o "falcon".
 resource "random_pet" "dbuser" {
   # Sin keepers ligados a la DB: rompe el ciclo DB -> secreto -> random_pet -> DB.
   # Una sola palabra porque RDS no acepta guiones en el usuario maestro de MySQL,

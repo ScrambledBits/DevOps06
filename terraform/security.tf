@@ -100,7 +100,7 @@ resource "aws_security_group" "all" {
   }
 }
 
-# "-1" en ip_protocol significa todos los protocolos (TCP, UDP, ICMP...) y todos los
+# "-1" en ip_protocol significa todos los protocolos (TCP, UDP, ICMP, etc.) y todos los
 # puertos. Por eso no lleva from_port ni to_port.
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
   security_group_id = aws_security_group.all.id
