@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (zonas al azar y README)
+
+- Las dos AZ se sortean al azar entre las que están activas y ofrecen `t3.micro` (`aws_ec2_instance_type_offerings`), en lugar de excluir `us-east-1e` a mano.
+- Los frontends se reparten entre `public` y `public-2`: si cae una zona, el ALB sigue teniendo destinos.
+- El tipo de instancia vive en `local.instance_type` y lo comparten el filtro de zonas y las instancias.
+- README ampliado: arquitectura, tecnologías, recorrido de una petición y de la contraseña, uso y limitaciones.
+- Cambiar el sorteo reemplaza las subnets; con la infraestructura en pie conviene `terraform destroy` y luego `apply`.
+
 ## 2026-11-25 (segundo backend)
 
 - Segundo backend en `private-2` (otra AZ) con `count = 2` y un bloque `moved` para no recrear el existente.

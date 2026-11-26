@@ -13,7 +13,7 @@ Todo el código está comentado en español, archivo por archivo, pensado para l
 | Capa | Recurso | Dónde vive | Qué hace |
 |---|---|---|---|
 | Entrada | Application Load Balancer `frontend-alb` | subnets `public` y `public-2` | Recibe HTTP en el puerto 80 y reparte entre los frontends sanos |
-| Web | 5 instancias EC2 `t3.micro` (`frontend-0` a `frontend-4`) | subnet `public` | Caddy sirve la página y reenvía `/api/*` a los backends |
+| Web | 5 instancias EC2 `t3.micro` (`frontend-0` a `frontend-4`) | subnets `public` (0, 2, 4) y `public-2` (1, 3) | Caddy sirve la página y reenvía `/api/*` a los backends |
 | API | 2 instancias EC2 `t3.micro` (`backend-0`, `backend-1`) | subnets `private` y `private-2`, una por AZ | Flask con Gunicorn en el puerto 5000, consulta MySQL |
 | Datos | RDS MySQL 8.0 `db.t3.micro`, 20 GiB | DB subnet group `private` + `private-2` | Base de datos administrada por AWS |
 | Secretos | Secrets Manager `dev/dbcreds` | servicio regional de AWS | Usuario y contraseña de la base, generados al azar |
@@ -28,7 +28,9 @@ La red es una VPC `10.0.0.0/16` en `us-east-1`, repartida en dos zonas de dispon
 | `private` | `10.0.2.0/24` | AZ A | NAT Gateway |
 | `private-2` | `10.0.3.0/24` | AZ B | NAT Gateway |
 
-La zona A se elige al azar entre las disponibles (sin `us-east-1e`) y la B es cualquier otra distinta. `public-2` existe porque el ALB exige subnets en al menos dos zonas. `private-2` existe por dos razones: RDS pide lo mismo para su subnet group, y el segundo backend vive ahí, así que si se cae una zona queda un backend en la otra.
+Las zonas A y B se sortean con `random_shuffle` entre las que cumplen dos condiciones: están activas y ofrecen `t3.micro`. La segunda condición importa: en `us-east-1`, la zona `us-east-1e` está activa pero no tiene ese tipo de instancia. El sorteo queda guardado en el estado, así que no cambia en cada `apply`.
+
+Cada capa tiene presencia en las dos zonas. El ALB exige subnets en al menos dos zonas, RDS pide lo mismo para su subnet group, y los frontends y backends se reparten entre ambas. Si se cae una zona, siguen respondiendo los servidores de la otra.
 
 ## Tecnologías y cómo encajan
 
@@ -178,7 +180,7 @@ Conviene hacerlo al terminar la clase. El NAT Gateway, el ALB y RDS cobran por h
 Son decisiones para mantener el ejercicio simple, no lo que se haría en producción:
 
 - El puerto 22 de los frontends está abierto a todo internet. Lo razonable es limitarlo a tu IP (`/32`).
-- Los cinco frontends están en la misma subnet y zona. Si esa zona falla, el ALB se queda sin destinos.
+- RDS es una sola instancia (no Multi-AZ). Vive en una de las dos zonas; si esa zona falla, la API responde 503 hasta que la zona vuelva.
 - Solo hay HTTP. Para HTTPS haría falta un dominio y un certificado en el ALB.
 - La etiqueta `DateCreated` usa la fecha del plan, así que un `apply` en otro día actualiza esa etiqueta en todos los recursos.
 - `skip_final_snapshot = true`: al destruir RDS no queda copia de los datos.

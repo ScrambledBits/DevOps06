@@ -1,17 +1,46 @@
 # Un `data` no crea nada: le pregunta a AWS algo que ya existe.
-# Aquí pide la lista de zonas de disponibilidad (AZ) activas en us-east-1.
+# Aquí pide la lista de zonas de disponibilidad (AZ) activas en la región.
 data "aws_availability_zones" "available" {
-  # us-east-1e se queda fuera. Es una zona vieja con capacidad limitada y
-  # varios tipos de instancia modernos (t3 incluido) no existen en ella.
-  exclude_names = ["us-east-1e"]
-  state         = "available"
+  state = "available"
 }
 
-# Elige una AZ al azar de esa lista. El resultado se guarda en el estado,
-# así que no cambia en cada apply. Solo se vuelve a sortear si cambia la lista de entrada.
+# Una zona puede estar activa y aun así no ofrecer el tipo de instancia que
+# usamos. En us-east-1, por ejemplo, us-east-1e no tiene t3.micro. Este data
+# source pregunta en qué zonas sí se ofrece local.instance_type (compute.tf).
+data "aws_ec2_instance_type_offerings" "instance_type" {
+  location_type = "availability-zone"
+
+  filter {
+    name   = "instance-type"
+    values = [local.instance_type]
+  }
+}
+
+locals {
+  # Zonas que cumplen las dos condiciones: activas y con el tipo de instancia.
+  # setintersection devuelve un conjunto sin orden; sort lo vuelve una lista
+  # ordenada, así la entrada del sorteo es estable entre un plan y otro.
+  azs = sort(setintersection(
+    data.aws_availability_zones.available.names,
+    data.aws_ec2_instance_type_offerings.instance_type.locations,
+  ))
+}
+
+# Sortea dos AZ distintas de esa lista: result[0] es la zona A y result[1] la B.
+# El resultado se guarda en el estado, así que no cambia en cada apply. Solo se
+# vuelve a sortear si cambia la lista de entrada o result_count.
 resource "random_shuffle" "az" {
-  input        = data.aws_availability_zones.available.names
-  result_count = 1
+  input        = local.azs
+  result_count = 2
+
+  lifecycle {
+    # Si la región tuviera menos de dos zonas válidas, result[1] no existiría y
+    # el error sería confuso. La precondición falla antes con un mensaje claro.
+    precondition {
+      condition     = length(local.azs) >= 2
+      error_message = "Se necesitan al menos 2 AZ que ofrezcan ${local.instance_type}."
+    }
+  }
 }
 
 # La VPC es tu red privada dentro de AWS. 10.0.0.0/16 te da 65,536 direcciones
@@ -32,7 +61,7 @@ resource "aws_subnet" "public" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "10.0.1.0/24"
 
-  # [0] porque random_shuffle devuelve una lista, aunque tenga un solo elemento.
+  # Zona A del sorteo.
   availability_zone = random_shuffle.az.result[0]
 
   # Toda instancia lanzada aquí recibe una IP pública automáticamente.
@@ -43,18 +72,15 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Segunda subnet pública. Existe por una regla del ALB: exige subnets en
-# al menos dos AZ distintas, o no se crea.
+# Segunda subnet pública, en la zona B. El ALB exige subnets en al menos dos AZ
+# distintas, y aquí también viven la mitad de los frontends.
 resource "aws_subnet" "public-2" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "10.0.4.0/24"
 
-  # Expresión `for`: recorre las AZ disponibles, se queda con las que NO son
-  # la de la subnet anterior y toma la primera. Garantiza una AZ diferente.
-  availability_zone = [
-    for az in data.aws_availability_zones.available.names : az
-    if az != aws_subnet.public.availability_zone
-  ][0]
+  # Zona B del sorteo. random_shuffle nunca repite un elemento, así que es
+  # distinta de la zona A.
+  availability_zone = random_shuffle.az.result[1]
 
   map_public_ip_on_launch = true
 
@@ -64,7 +90,7 @@ resource "aws_subnet" "public-2" {
 }
 
 # Subnet privada: no asigna IPs públicas y su ruta a internet va por el NAT.
-# Desde fuera nadie llega directo aquí. Vive en la misma AZ que la pública.
+# Desde fuera nadie llega directo aquí. Vive en la zona A, como public.
 resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
@@ -75,15 +101,12 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Segunda privada, en otra AZ con el mismo truco del `for`.
-# La pide RDS: un DB subnet group necesita subnets en al menos dos AZ.
+# Segunda privada, en la zona B como public-2. La pide RDS (un DB subnet group
+# necesita subnets en al menos dos AZ) y aquí vive el segundo backend.
 resource "aws_subnet" "private-2" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.3.0/24"
-  availability_zone = [
-    for az in data.aws_availability_zones.available.names : az
-    if az != aws_subnet.private.availability_zone
-  ][0]
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = random_shuffle.az.result[1]
 
   tags = {
     Name = "Private"

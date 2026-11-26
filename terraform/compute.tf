@@ -21,10 +21,16 @@ data "aws_ami" "operating-system" {
   owners = ["099720109477"]
 }
 
-# Cinco servidores web idénticos en la subnet pública.
+locals {
+  # Un solo lugar para el tipo de instancia. network.tf lo usa para quedarse
+  # solo con las AZ que lo ofrecen, así el filtro y las instancias no se desfasan.
+  instance_type = "t3.micro"
+}
+
+# Cinco servidores web idénticos, repartidos entre las dos subnets públicas.
 resource "aws_instance" "frontend" {
   ami           = data.aws_ami.operating-system.id
-  instance_type = "t3.micro"
+  instance_type = local.instance_type
 
   # count convierte este bloque en una lista de 5 instancias:
   # aws_instance.frontend[0] hasta aws_instance.frontend[4].
@@ -32,7 +38,10 @@ resource "aws_instance" "frontend" {
 
   associate_public_ip_address = true
 
-  subnet_id = aws_subnet.public.id
+  # element() alterna entre las dos subnets: los pares (0, 2, 4) van a public
+  # en la zona A y los impares (1, 3) a public-2 en la zona B. Si se cae una
+  # zona, el ALB sigue teniendo frontends sanos en la otra.
+  subnet_id = element([aws_subnet.public.id, aws_subnet.public-2.id], count.index)
 
   # Dos SG a la vez: "all" para poder salir a internet y "frontend" para recibir 22/80/443.
   vpc_security_group_ids = [aws_security_group.all.id, aws_security_group.frontend.id]
@@ -61,7 +70,7 @@ resource "aws_instance" "frontend" {
 # Dos backends en las subnets privadas. Sin IP pública: solo se llega desde la VPC.
 resource "aws_instance" "backend" {
   ami           = data.aws_ami.operating-system.id
-  instance_type = "t3.micro"
+  instance_type = local.instance_type
 
   count = 2
 
