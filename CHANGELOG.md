@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-26 (diagrama animado)
+
+- Nuevo `docs/architecture.gif`, generado a partir de `terraform/` y `ansible/` con iconos oficiales de AWS: el recorrido de una petición se ilumina salto a salto con flechas animadas. Reemplaza a los diagramas PNG anteriores.
+
 ## 2026-11-25 (zonas al azar y README)
 
 - Las dos AZ se sortean al azar entre las que están activas y ofrecen `t3.micro` (`aws_ec2_instance_type_offerings`), en lugar de excluir `us-east-1e` a mano.

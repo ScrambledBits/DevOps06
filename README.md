@@ -6,7 +6,7 @@ El resultado se puede ver en el navegador. La página dice qué frontend respond
 
 Todo el código está comentado en español, archivo por archivo, pensado para leerse en clase.
 
-![Arquitectura de DevOps06](docs/architecture.png)
+![Arquitectura de DevOps06: el recorrido de una petición se ilumina salto a salto](docs/architecture.gif)
 
 ## Qué se construye
 
