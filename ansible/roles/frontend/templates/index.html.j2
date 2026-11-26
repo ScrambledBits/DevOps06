@@ -19,6 +19,8 @@
     table { border-collapse: collapse; width: 100%; }
     th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #ccc; }
     .actual { font-weight: bold; }
+    .ok { color: #1a7f37; }
+    .error { color: #cf222e; }
   </style>
 </head>
 <body>
@@ -47,6 +49,57 @@
   {% endfor %}
   </ul>
 
-  <p><a href="/api/">Probar el backend y la base de datos</a></p>
+  <h2>Conexión con el backend</h2>
+  <p>El navegador llama a <a href="/api/">/api/</a> cada 5 segundos. Caddy reenvía esa
+  petición al backend y el backend consulta MySQL.</p>
+  <table>
+    <tr><th>Estado</th><td id="api-estado">Esperando la primera respuesta</td></tr>
+    <tr><th>Backend</th><td id="api-backend">-</td></tr>
+    <tr><th>MySQL</th><td id="api-mysql">-</td></tr>
+    <tr><th>Hora en la base</th><td id="api-hora">-</td></tr>
+    <tr><th>Última comprobación</th><td id="api-comprobado">-</td></tr>
+  </table>
+
+  <script>
+    // Esta parte corre en el navegador, no en Ansible ni en el servidor.
+    // Ansible solo copia el texto tal cual, porque no contiene variables de Jinja.
+    const INTERVALO_MS = 5000;
+
+    function mostrar(id, texto) {
+      // textContent escribe texto plano: si la respuesta trae HTML, no se ejecuta.
+      document.getElementById(id).textContent = texto;
+    }
+
+    async function comprobarApi() {
+      const estado = document.getElementById("api-estado");
+      try {
+        // no-store evita que el navegador reutilice una respuesta guardada en caché.
+        const respuesta = await fetch("/api/", { cache: "no-store" });
+        const datos = await respuesta.json();
+        // La API responde 200 si llegó a MySQL y 503 si no, pero las dos traen JSON.
+        if (respuesta.ok) {
+          estado.className = "ok";
+          mostrar("api-estado", "Conectado (HTTP " + respuesta.status + ")");
+        } else {
+          estado.className = "error";
+          mostrar("api-estado", "La API responde, pero sin base de datos (HTTP " + respuesta.status + ")");
+        }
+        mostrar("api-backend", datos.backend);
+        mostrar("api-mysql", datos.db === "conectada" ? "MySQL " + datos.mysql_version : datos.detalle);
+        mostrar("api-hora", datos.hora_db || "-");
+      } catch (error) {
+        // fetch falla sin respuesta (red caída) y json() falla si Caddy devuelve
+        // un error que no es JSON, por ejemplo un 502 cuando el backend está apagado.
+        estado.className = "error";
+        mostrar("api-estado", "Sin respuesta del backend: " + error.message);
+      }
+      mostrar("api-comprobado", new Date().toLocaleTimeString());
+      // setTimeout después de terminar, en lugar de setInterval: si el backend
+      // tarda más de 5 segundos, las peticiones no se acumulan.
+      setTimeout(comprobarApi, INTERVALO_MS);
+    }
+
+    comprobarApi();
+  </script>
 </body>
 </html>
