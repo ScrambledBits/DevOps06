@@ -9,3 +9,4 @@ crash.log
 *.key
 ansible/inventory.ini
 .DS_Store
+.claude/
